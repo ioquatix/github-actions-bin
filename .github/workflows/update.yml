@@ -1,0 +1,60 @@
+name: Check update and push to AUR
+
+on:
+  schedule:
+    - cron: '37 17 * * *'
+  repository_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux
+
+    steps:
+      - name: Save ssh key
+        run: |
+          echo "${{ secrets.SSH_KEY }}" | install -Dm400 /dev/stdin ~/.ssh/id_rsa
+
+      - name: Get time
+        id: time
+        run: echo "::set-output name=time::$(date +%F-%T)"
+
+      - name: Set up cache
+        uses: actions/cache@master
+        with:
+          path: /var/cache/pacman/pkg
+          key: pacman-cache-x86_64-${{ steps.time.outputs.time }}
+          restore-keys: pacman-cache-x86_64-
+
+      - name: Install packages
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm git jq pacman-contrib openssh
+
+      - uses: actions/checkout@v2
+
+      - name: Check update
+        run: |
+          set -x
+
+          current=$(grep -P '^pkgver' PKGBUILD | cut -d= -f2)
+          latest=$(curl https://api.github.com/repos/actions/runner/releases | jq -r '.[] | .tag_name' | grep -P 'v[0-9.]*' | head -n1 | cut -c 2-)
+
+          [ "$current" = "$latest" ] && exit
+
+          useradd makepkg
+          chown makepkg:root . -R
+          sed "/^pkgver/s/.*/pkgver=${latest}/" -i PKGBUILD
+          su makepkg -c "updpkgsums"
+          su makepkg -c "makepkg --printsrcinfo" > .SRCINFO
+
+          git config user.name ${{ secrets.GIT_COMMIT_NAME }}
+          git config user.email ${{ secrets.GIT_COMMIT_EMAIL }}
+          git add .
+          git commit -m "auto upgraded to ${latest}"
+
+          [ -n "${{ secrets.READ_ONLY }}" ] && git show && exit
+
+          git push origin master
+          git push ssh://aur@aur.archlinux.org/github-actions-bin.git master

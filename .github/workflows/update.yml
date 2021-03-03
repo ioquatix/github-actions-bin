@@ -3,7 +3,7 @@ name: Check update and push to AUR
 on:
   schedule:
     - cron: '37 17 * * *'
-  repository_dispatch:
+  workflow_dispatch:
 
 jobs:
   update:

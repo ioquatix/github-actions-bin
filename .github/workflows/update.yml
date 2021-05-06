@@ -38,6 +38,10 @@ jobs:
         run: |
           set -x
 
+          git remote add aur ssh://aur@aur.archlinux.org/github-actions-bin.git
+          [ ! -d 'subtree' ] && git subtree add --prefix=subtree aur master
+          cd subtree
+
           current=$(grep -P '^pkgver' PKGBUILD | cut -d= -f2)
           latest=$(curl https://api.github.com/repos/actions/runner/releases | jq -r '.[] | .tag_name' | grep -P 'v[0-9.]*' | head -n1 | cut -c 2-)
 
@@ -56,5 +60,6 @@ jobs:
 
           [ -n "${{ secrets.READ_ONLY }}" ] && git show && exit
 
+          cd ..
           git push origin master
-          git push ssh://aur@aur.archlinux.org/github-actions-bin.git master
+          git subtree push --prefix=subtree aur master

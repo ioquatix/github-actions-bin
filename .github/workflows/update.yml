@@ -45,6 +45,7 @@ jobs:
 
           useradd makepkg
           chown makepkg:root . -R
+          cd subtree
           sed "/^pkgver/s/.*/pkgver=${latest}/" -i PKGBUILD
           su makepkg -c "updpkgsums"
           su makepkg -c "makepkg --printsrcinfo" > .SRCINFO
@@ -56,5 +57,6 @@ jobs:
 
           [ -n "${{ secrets.READ_ONLY }}" ] && git show && exit
 
+          cd ..
           git push origin master
-          git push ssh://aur@aur.archlinux.org/github-actions-bin.git master
+          git subtree push --prefix=subtree ssh://aur@aur.archlinux.org/github-actions-bin.git master

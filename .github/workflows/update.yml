@@ -32,7 +32,7 @@ jobs:
           pacman -Syu --noconfirm
           pacman -S --needed --noconfirm git jq pacman-contrib openssh
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Check update
         run: |
@@ -40,12 +40,11 @@ jobs:
 
           cp ssh_config /root/.ssh/config
 
-          git config user.name ${{ secrets.GIT_COMMIT_NAME }}
-          git config user.email ${{ secrets.GIT_COMMIT_EMAIL }}
-          git remote add aur ssh://aur@aur.archlinux.org/github-actions-bin.git
-
-          [ ! -d 'subtree' ] && git subtree add --prefix=subtree aur master
-          cd subtree
+          git clone ssh://aur@aur.archlinux.org/github-actions-bin.git aur
+          git config --global --add safe.directory $(realpath aur)
+          cd aur
+          git config user.name "${{ secrets.GIT_COMMIT_NAME }}"
+          git config user.email "${{ secrets.GIT_COMMIT_EMAIL }}"
 
           current=$(grep -P '^pkgver' PKGBUILD | cut -d= -f2)
           latest=$(curl https://api.github.com/repos/actions/runner/releases | jq -r '.[] | .tag_name' | grep -P 'v[0-9.]*' | head -n1 | cut -c 2-)
@@ -62,7 +61,4 @@ jobs:
           git commit -m "auto upgraded to ${latest}"
 
           [ -n "${{ secrets.READ_ONLY }}" ] && git show && exit
-
-          cd ..
           git push origin master
-          git subtree push --prefix=subtree aur master

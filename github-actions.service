@@ -13,7 +13,7 @@ ExecStart=/var/lib/github-actions/run.sh
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/github-actions
-ProtectHome=strict
+ProtectHome=yes
 InaccessiblePaths=/home /root /srv
 PrivateTmp=true
 
